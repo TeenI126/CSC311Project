@@ -9,6 +9,14 @@ import torch.utils.data
 import numpy as np
 import torch
 
+import matplotlib.pyplot as plt
+
+
+def sigmoid(x):  # borrowed from item_response.py
+    """ Apply sigmoid function.
+    """
+    return torch.exp(x) / (1 + torch.exp(x))
+
 
 def load_data(base_path="../data"):
     """ Load the data in PyTorch Tensor.
@@ -68,7 +76,10 @@ class AutoEncoder(nn.Module):
         #####################################################################
         # TODO:                                                             #
         # Implement the function as described in the docstring.             #
-        # Use sigmoid activations for f and g.                              #
+        # Use sigmoid activations for f and g.
+        inputs = F.sigmoid(self.g(inputs))
+        inputs = F.sigmoid(self.h(inputs))
+
         #####################################################################
         out = inputs
         #####################################################################
@@ -77,7 +88,7 @@ class AutoEncoder(nn.Module):
         return out
 
 
-def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
+def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch, plot_over_epoch=False):
     """ Train the neural network, where the objective also includes
     a regularizer.
 
@@ -91,14 +102,15 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
     :return: None
     """
     # TODO: Add a regularizer to the cost function. 
-    
+
     # Tell PyTorch you are training the model.
     model.train()
 
     # Define optimizers and loss function.
     optimizer = optim.SGD(model.parameters(), lr=lr)
     num_student = train_data.shape[0]
-
+    valid_acc = 0
+    plots = []
     for epoch in range(0, num_epoch):
         train_loss = 0.
 
@@ -122,6 +134,20 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
         valid_acc = evaluate(model, zero_train_data, valid_data)
         print("Epoch: {} \tTraining Cost: {:.6f}\t "
               "Valid Acc: {}".format(epoch, train_loss, valid_acc))
+        plots.append((epoch + 1, train_loss, valid_acc))
+    print("Final Valid Acc: {}".format(valid_acc))
+    if plot_over_epoch == True:
+        fig, ax = plt.subplots()
+        epochs = [i for (i, j, k) in plots]
+        costs = [j for (i, j, k) in plots]
+        v_accs = [k for (i, j, k) in plots]
+        ax.set_xlabel("epochs")
+        ax.set_ylabel("training cost",color="green")
+        ax.plot(epochs, costs, color="green")
+        ax2 = ax.twinx()
+        ax2.set_ylabel("validation accuracy", color="red")
+        ax2.plot(epochs, v_accs, color="red")
+        plt.show()
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -162,16 +188,26 @@ def main():
     # validation set.                                                   #
     #####################################################################
     # Set model hyperparameters.
-    k = None
-    model = None
+    # K = [10, 50, 100, 200, 500]
+    # LR = [0.005, 0.01, 0.02]
+    # for k in K:
+    #     for lr in LR:
+    #         print(f"\nk = {k}, lr = {lr}")
+    #         model = AutoEncoder(train_matrix.size(1), k)
+    #         # Set optimization hyperparameters.
+    #         num_epoch = 50
+    #         lamb = 0
+    #
+    #         # training montage!
+    #         train(model, lr, lamb, train_matrix, zero_train_matrix,
+    #               valid_data, num_epoch)
 
-    # Set optimization hyperparameters.
-    lr = None
-    num_epoch = None
-    lamb = None
+    model = AutoEncoder(train_matrix.size(1), 50)
+    train(model, 0.02, 0, train_matrix, zero_train_matrix, valid_data, 25, plot_over_epoch=True)
 
-    train(model, lr, lamb, train_matrix, zero_train_matrix,
-          valid_data, num_epoch)
+    test_acc = evaluate(model, zero_train_matrix, test_data)
+    print(f"Final Test Accuracy: {test_acc}")
+
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
