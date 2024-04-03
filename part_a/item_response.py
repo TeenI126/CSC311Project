@@ -1,6 +1,8 @@
 from utils import *
 
 import numpy as np
+from tqdm import tqdm
+import csv
 
 
 def sigmoid(x):
@@ -26,6 +28,7 @@ def neg_log_likelihood(data, theta, beta):
     #####################################################################
     log_lklihood = 0.
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
+        # Calculate log likelihood using derived equation in report
         log_lklihood += is_correct * ((theta[i]-beta[j]) - np.log(1 + np.exp(theta[i]-beta[j])))
     #####################################################################
     #                       END OF YOUR CODE                            #
@@ -54,17 +57,20 @@ def update_theta_beta(data, lr, theta, beta):
     # TODO:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
+
+    # Update theta
     d_theta = np.zeros_like(theta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid(theta[i] - beta[j])
-        d_theta[i] += is_correct - p
-    theta = theta + lr * d_theta
+        p = sigmoid(theta[i] - beta[j]) # Get probability of correct answer
+        d_theta[i] += is_correct - p # Get derivative w.r.t theta
+    theta = theta + lr * d_theta # Update weights with learning rate
 
+    # Update beta
     d_beta = np.zeros_like(beta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid(theta[i] - beta[j])
-        d_beta[j] += p - is_correct
-    beta = beta + lr * d_beta
+        p = sigmoid(theta[i] - beta[j]) # Get probability of correct answer
+        d_beta[j] += p - is_correct # Get derivative w.r.t theta
+    beta = beta + lr * d_beta # Update weights with learning rate
 
     #####################################################################
     #                       END OF YOUR CODE                            #
@@ -92,7 +98,7 @@ def irt(data, val_data, test_data, lr, iterations, quiet=False):
     val_acc_lst, test_acc_lst = [], []
     train_lld_lst, val_lld_lst = [], []
 
-    for i in range(iterations):
+    for i in tqdm(range(iterations)):
         neg_lld = neg_log_likelihood(data, theta=theta, beta=beta)
         train_lld_lst.append(neg_lld)
 
@@ -142,30 +148,35 @@ def main():
     # code, report the validation and test accuracy.                    #
     #####################################################################
 
-    import csv
-    from tqdm import tqdm
-    
+    # Grid search parameters
     lr_list = [0.01, 0.02, 0.03, 0.04]
     iter_list = [40, 60, 80, 90, 100]
+
+    # Perform gridsearch
     gridsearch = [["Learning_rate", "Iterations", "val_score", "test_score"]]
-    for lr in tqdm(lr_list):
+    for lr in lr_list:
         _, _, val_acc_lst, test_acc_lst, _, _ = irt(train_data, val_data, test_data, lr, max(iter_list), quiet=True)
         for iter in iter_list:
+             # Retrieve vallidation and test scores for each Lr and iteration
             val_score = val_acc_lst[iter-1]
             test_score = test_acc_lst[iter-1]
             gridsearch.append([lr, iter, val_score, test_score])
     
+    # Write gridsearch results to csv file
     with open("IRT_gridsearch.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerows(gridsearch)
     
+
+    # Train model using best hyperparameters from gridsearch
     best_lr, best_iter = 0.02, 90
-    theta, beta, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst = irt(train_data, val_data, test_data, best_lr, best_iter, quiet=True)
+    theta_final, beta_final, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst = irt(train_data, val_data, test_data, best_lr, best_iter, quiet=True)
 
     print(f"Final model hyperparameters:\nLearning Rate - {best_lr}\nIterations - {best_iter}")
     print("Final model validation accuracy: ", val_acc_lst[-1])
     print("Final model test accuracy: ", test_acc_lst[-1])
 
+    # Write log-likelihood history to csv file
     with open("IRT_lld.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow([i+1 for i in range(best_iter)])
@@ -180,7 +191,30 @@ def main():
     # TODO:                                                             #
     # Implement part (d)                                                #
     #####################################################################
-    pass
+    results = {}
+    # Choose first 3 qns
+    question_ids = train_data["question_id"][:3]
+    # Iterate through each question
+    for idx, q_id in tqdm(enumerate(question_ids)):
+        for i, j, in zip(train_data["user_id"], train_data["question_id"]):
+            if j == q_id:
+                # Initialize values as empty value
+                if theta_final[i] not in results.keys():
+                    results[theta_final[i]] = ["","",""]
+
+                # Calculate probability and update value in dictionary
+                p = sigmoid(theta_final[i] - beta_final[j])
+                results[theta_final[i]][idx] = p
+
+    # Write values to csv
+    with open("IRT_qns.csv", "w", newline="") as f:
+        csvwriter = csv.writer(f)
+        for key in sorted(results.keys()):
+            csvwriter.writerow([key] + results[key])
+
+
+
+
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
