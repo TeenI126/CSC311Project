@@ -19,7 +19,7 @@ def knn_impute_by_user(matrix, valid_data, k):
     # We use NaN-Euclidean distance measure.
     mat = nbrs.fit_transform(matrix)
     acc = sparse_matrix_evaluate(valid_data, mat)
-    print("Validation Accuracy: {}".format(acc))
+    print("Impute by User Accuracy - {}".format(acc))
     return acc
 
 
@@ -37,7 +37,16 @@ def knn_impute_by_item(matrix, valid_data, k):
     # TODO:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
-    acc = None
+
+    # Core assumption: Questions are similar to all other questions
+
+    matrix = np.transpose(matrix) # Transpose matrix so that rows become columns and vice versa
+    nbrs = KNNImputer(n_neighbors=k)
+    # We use NaN-Euclidean distance measure.
+    mat = nbrs.fit_transform(matrix)
+    mat = np.transpose(mat) # Tranpose back to make user
+    acc = sparse_matrix_evaluate(valid_data, mat)
+    print("Impute by Item Accuracy - {}".format(acc))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -60,7 +69,32 @@ def main():
     # the best performance and report the test accuracy with the        #
     # chosen k*.                                                        #
     #####################################################################
-    pass
+    k_values = [1, 6, 11, 16, 21, 26] # Domain of k stated in the question
+    best_k_user = best_k_item = None
+    best_acc_user = best_acc_item = 0
+
+    for k in k_values:
+        print(f"\nEvaluating k = {k}")
+        acc_user = knn_impute_by_user(sparse_matrix, val_data, k)
+        if acc_user > best_acc_user:
+            best_k_user = k
+            best_acc_user = acc_user
+
+        acc_item = knn_impute_by_item(sparse_matrix, val_data, k)
+        if acc_item > best_acc_item:
+            best_k_item = k
+            best_acc_item = acc_item
+        
+    print('\n',"#"*70, '\n')
+    print(f"Best results for user-based collaborative filtering:\nk - {best_k_user}\
+          \nvalidation accuracy - {best_acc_user}")
+    test_acc_user = knn_impute_by_user(sparse_matrix, test_data, best_k_user)
+    
+    print(f"\n\nBest results for item-based collaborative filtering:\nk - {best_k_item}\
+          \nvalidation accuracy - {best_acc_item}")
+    test_acc_item = knn_impute_by_item(sparse_matrix, test_data, best_k_item)
+    
+
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
