@@ -73,6 +73,7 @@ def main():
     best_k_user = best_k_item = None
     best_acc_user = best_acc_item = 0
 
+    # Find best k value for imputing by user and item
     for k in k_values:
         print(f"\nEvaluating k = {k}")
         acc_user = knn_impute_by_user(sparse_matrix, val_data, k)
