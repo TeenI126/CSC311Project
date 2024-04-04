@@ -74,7 +74,7 @@ class AutoEncoder(nn.Module):
         :return: user vector.
         """
         #####################################################################
-        # TODO:                                                             #
+        # TODONE:                                                             #
         # Implement the function as described in the docstring.             #
         # Use sigmoid activations for f and g.
         inputs = F.sigmoid(self.g(inputs))
@@ -101,7 +101,7 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch, p
     :param num_epoch: int
     :return: None
     """
-    # TODO: Add a regularizer to the cost function. 
+    # TODONE: Add a regularizer to the cost function.
 
     # Tell PyTorch you are training the model.
     model.train()
@@ -125,7 +125,7 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch, p
             nan_mask = np.isnan(train_data[user_id].unsqueeze(0).numpy())
             target[0][nan_mask] = output[0][nan_mask]
 
-            loss = torch.sum((output - target) ** 2.)
+            loss = torch.sum((output - target) ** 2.) + (lamb/2)*(model.get_weight_norm())
             loss.backward()
 
             train_loss += loss.item()
@@ -136,18 +136,18 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch, p
               "Valid Acc: {}".format(epoch, train_loss, valid_acc))
         plots.append((epoch + 1, train_loss, valid_acc))
     print("Final Valid Acc: {}".format(valid_acc))
-    if plot_over_epoch == True:
-        fig, ax = plt.subplots()
-        epochs = [i for (i, j, k) in plots]
-        costs = [j for (i, j, k) in plots]
-        v_accs = [k for (i, j, k) in plots]
-        ax.set_xlabel("epochs")
-        ax.set_ylabel("training cost",color="green")
-        ax.plot(epochs, costs, color="green")
-        ax2 = ax.twinx()
-        ax2.set_ylabel("validation accuracy", color="red")
-        ax2.plot(epochs, v_accs, color="red")
-        plt.show()
+    # if plot_over_epoch:
+    #     fig, ax = plt.subplots()
+    #     epochs = [i for (i, j, k) in plots]
+    #     costs = [j for (i, j, k) in plots]
+    #     v_accs = [k for (i, j, k) in plots]
+    #     ax.set_xlabel("epochs")
+    #     ax.set_ylabel("training cost",color="green")
+    #     ax.plot(epochs, costs, color="green")
+    #     ax2 = ax.twinx()
+    #     ax2.set_ylabel("validation accuracy", color="red")
+    #     ax2.plot(epochs, v_accs, color="red")
+    #     plt.show() # DISABLED FOR SUBMISSION
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -187,27 +187,43 @@ def main():
     # Try out 5 different k and select the best k using the             #
     # validation set.                                                   #
     #####################################################################
+    # (B)
     # Set model hyperparameters.
-    # K = [10, 50, 100, 200, 500]
-    # LR = [0.005, 0.01, 0.02]
-    # for k in K:
-    #     for lr in LR:
-    #         print(f"\nk = {k}, lr = {lr}")
-    #         model = AutoEncoder(train_matrix.size(1), k)
-    #         # Set optimization hyperparameters.
-    #         num_epoch = 50
-    #         lamb = 0
-    #
-    #         # training montage!
-    #         train(model, lr, lamb, train_matrix, zero_train_matrix,
-    #               valid_data, num_epoch)
+    K = [10, 50, 100, 200, 500]
+    LR = [0.005, 0.01, 0.02]
+    for k in K:
+        for lr in LR:
+            print(f"\nk = {k}, lr = {lr}")
+            model = AutoEncoder(train_matrix.size(1), k)
+            # Set optimization hyperparameters.
+            num_epoch = 50
+            lamb = 0  # no regularization
 
+            # training montage!
+            train(model, lr, lamb, train_matrix, zero_train_matrix,
+                  valid_data, num_epoch)
+
+    # (C) graphing and testing selected model from part b
     model = AutoEncoder(train_matrix.size(1), 50)
     train(model, 0.02, 0, train_matrix, zero_train_matrix, valid_data, 25, plot_over_epoch=True)
 
     test_acc = evaluate(model, zero_train_matrix, test_data)
     print(f"Final Test Accuracy: {test_acc}")
 
+    # (D) optimising lambda
+    k = 50
+    lr = 0.02
+    epochs = 25
+    lambs = [0.001, 0.01, 0.1, 1]
+    lamb_model = []
+    for lamb in lambs:
+        print(f"\n for lambda = {lamb}")
+        model = AutoEncoder(train_matrix.size(1), k)
+        train(model, lr, lamb, train_matrix, zero_train_matrix, valid_data, epochs)
+        lamb_model.append(model)
+
+    test_acc = evaluate(lamb_model[0], zero_train_matrix, test_data)
+    print(f"Final Test Accuracy for Regularizer: {test_acc}")
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
