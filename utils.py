@@ -91,6 +91,32 @@ def load_public_test_csv(root_dir="/data"):
     return _load_csv(path)
 
 
+def load_question_meta_csv(root_dir="/data"):
+    path = os.path.join(root_dir, "question_meta.csv")
+
+    if not os.path.exists(path):
+        raise Exception("The specified path {} does not exist.".format(path))
+    # Initialize the data.
+    data = {
+        "question_id": [],
+        "subject_id": []
+    }
+    # Iterate over the row to fill in the data.
+    with open(path, "r") as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            try:
+                data["question_id"].append(int(row[0]))
+                data["subject_id"].append(row[1].strip("][").split(","))
+            except ValueError:
+                # Pass first row.
+                pass
+            except IndexError:
+                # is_correct might not be available.
+                pass
+    return data
+
+
 def load_private_test_csv(root_dir="/data"):
     """ Load the private test data as a dictionary.
 
