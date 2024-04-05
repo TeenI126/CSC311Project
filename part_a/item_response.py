@@ -153,14 +153,15 @@ def main():
     iter_list = [40, 60, 80, 90, 100]
 
     # Perform gridsearch
-    gridsearch = [["Learning_rate", "Iterations", "val_score", "test_score"]]
+    gridsearch = [["Learning_rate", "Iterations", "val_score", "test_score", "val_lld"]]
     for lr in lr_list:
-        _, _, val_acc_lst, test_acc_lst, _, _ = irt(train_data, val_data, test_data, lr, max(iter_list), quiet=True)
+        _, _, val_acc_lst, test_acc_lst, _, val_lld_lst = irt(train_data, val_data, test_data, lr, max(iter_list), quiet=True)
         for iter in iter_list:
              # Retrieve vallidation and test scores for each Lr and iteration
             val_score = val_acc_lst[iter-1]
             test_score = test_acc_lst[iter-1]
-            gridsearch.append([lr, iter, val_score, test_score])
+            val_lld = val_lld_lst[iter-1]
+            gridsearch.append([lr, iter, val_score, test_score, val_lld])
     
     # Write gridsearch results to csv file
     with open("IRT_gridsearch.csv", "w", newline="") as f:
