@@ -61,6 +61,11 @@ def load_train_csv(root_dir="/data"):
     return _load_csv(path)
 
 
+def load_question_meta_csv(root_dir="\data"):
+    path = os.path.join(root_dir, "question_meta.csv")
+    return _load_csv(path)
+
+
 def load_valid_csv(root_dir="/data"):
     """ Load the validation data as a dictionary.
 
