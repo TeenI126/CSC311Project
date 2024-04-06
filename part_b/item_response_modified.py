@@ -2,7 +2,7 @@ from utils import *
 
 import numpy as np
 from tqdm import tqdm
-import csv
+import csv, ast
 
 
 def sigmoid(x):
@@ -36,7 +36,7 @@ def neg_log_likelihood(data, theta, beta):
     return -log_lklihood
 
 
-def update_theta_beta(data, lr, theta, beta):
+def update_theta_beta(data, lr, theta, beta, discriminant):
     """ Update theta and beta using gradient descent.
 
     You are using alternating gradient descent. Your update should look:
@@ -61,14 +61,14 @@ def update_theta_beta(data, lr, theta, beta):
     # Update theta
     d_theta = np.zeros_like(theta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid(theta[i] - beta[j]) # Get probability of correct answer
+        p = sigmoid((theta[i] - beta[j]) * discriminant[j]) # Get probability of correct answer
         d_theta[i] += is_correct - p # Get derivative w.r.t theta
     theta = theta + lr * d_theta # Update weights with learning rate
 
     # Update beta
     d_beta = np.zeros_like(beta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid(theta[i] - beta[j]) # Get probability of correct answer
+        p = sigmoid((theta[i] - beta[j]) * discriminant[j]) # Get probability of correct answer
         d_beta[j] += p - is_correct # Get derivative w.r.t theta
     beta = beta + lr * d_beta # Update weights with learning rate
 
@@ -78,7 +78,7 @@ def update_theta_beta(data, lr, theta, beta):
     return theta, beta
 
 
-def irt(data, val_data, test_data, lr, iterations, quiet=False):
+def irt(data, val_data, test_data, lr, iterations, discriminant, quiet=False):
     """ Train IRT model.
 
     You may optionally replace the function arguments to receive a matrix.
@@ -92,7 +92,7 @@ def irt(data, val_data, test_data, lr, iterations, quiet=False):
     :return: (theta, beta, val_acc_lst)
     """
     # TODONE: Initialize theta and beta.
-    theta = np.ones(len(data["user_id"]))
+    theta = np.zeros(len(data["user_id"]))
     beta = np.ones(len(data["question_id"]))
 
     val_acc_lst, test_acc_lst = [], []
@@ -110,7 +110,7 @@ def irt(data, val_data, test_data, lr, iterations, quiet=False):
         test_acc_lst.append(evaluate(test_data, theta, beta))
         if not quiet:
             print("NLLK: {} \t Score: {}".format(neg_lld, score))
-        theta, beta = update_theta_beta(data, lr, theta, beta)
+        theta, beta = update_theta_beta(data, lr, theta, beta, discriminant)
 
     # TODONE: You may change the return values to achieve what you want.
     return theta, beta, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst
@@ -147,15 +147,29 @@ def main():
     # Tune learning rate and number of iterations. With the implemented #
     # code, report the validation and test accuracy.                    #
     #####################################################################
+    with open("../data/question_meta.csv", "r") as f:
+        csvreader = csv.reader(f)
+        next(csvreader) # Skip header row
+        discriminant = np.zeros(2000)
+        for row in csvreader:
+            question_id = int(row[0])
+            subjects = ast.literal_eval(row[1])
+            if 0 in subjects:
+                subjects.remove(0)
+            if 1 in subjects:
+                subjects.remove(1)
 
+            discriminant[question_id] = len(subjects)
+        discriminant = discriminant / np.max(discriminant)
+    
     # Grid search parameters
-    lr_list = [0.01, 0.02, 0.03, 0.04]
-    iter_list = [40, 60, 80, 90, 100]
+    lr_list = [0.05, 0.06, 0.7]
+    iter_list = [90, 100, 110, 120]
 
     # Perform gridsearch
     gridsearch = [["Learning_rate", "Iterations", "val_score", "test_score", "val_lld"]]
     for lr in lr_list:
-        _, _, val_acc_lst, test_acc_lst, _, val_lld_lst = irt(train_data, val_data, test_data, lr, max(iter_list), quiet=True)
+        _, _, val_acc_lst, test_acc_lst, _, val_lld_lst = irt(train_data, val_data, test_data, lr, max(iter_list), discriminant, quiet=True)
         for iter in iter_list:
              # Retrieve vallidation and test scores for each Lr and iteration
             val_score = val_acc_lst[iter-1]
@@ -164,11 +178,12 @@ def main():
             gridsearch.append([lr, iter, val_score, test_score, val_lld])
     
     # Write gridsearch results to csv file
-    with open("IRT_gridsearch.csv", "w", newline="") as f:
+    with open("../part_b/IRT_gridsearch_m.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerows(gridsearch)
     
 
+    quit()
     # Train model using best hyperparameters from gridsearch
     best_lr, best_iter = 0.02, 90
     theta_final, beta_final, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst = irt(train_data, val_data, test_data, best_lr, best_iter, quiet=True)
@@ -178,7 +193,7 @@ def main():
     print("Final model test accuracy: ", test_acc_lst[-1])
 
     # Write log-likelihood history to csv file
-    with open("IRT_lld.csv", "w", newline="") as f:
+    with open("IRT_lld_m.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow([i+1 for i in range(best_iter)])
         for train_lld, val_lld in zip(train_lld_lst, val_lld_lst):
@@ -208,7 +223,7 @@ def main():
                 results[theta_final[i]][idx] = p
 
     # Write values to csv
-    with open("IRT_qns.csv", "w", newline="") as f:
+    with open("IRT_qns_m.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         for key in sorted(results.keys()):
             csvwriter.writerow([key] + results[key])
