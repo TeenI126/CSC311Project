@@ -34,7 +34,7 @@ def knn_impute_by_item(matrix, valid_data, k):
     :return: float
     """
     #####################################################################
-    # TODO:                                                             #
+    # TODONE:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
 
@@ -64,7 +64,7 @@ def main():
     print(sparse_matrix.shape)
 
     #####################################################################
-    # TODO:                                                             #
+    # TODONE:                                                             #
     # Compute the validation accuracy for each k. Then pick k* with     #
     # the best performance and report the test accuracy with the        #
     # chosen k*.                                                        #
