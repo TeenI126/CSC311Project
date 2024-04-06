@@ -22,17 +22,12 @@ def neg_log_likelihood(data, theta, beta):
     :param beta: Vector
     :return: float
     """
-    #####################################################################
-    # TODONE:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
+
     log_lklihood = 0.
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
         # Calculate log likelihood using derived equation in report
-        log_lklihood += is_correct * ((theta[i]-beta[j]) - np.log(1 + np.exp(theta[i]-beta[j])))
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
+        log_lklihood += is_correct * ((theta[i] - beta[j]) - np.log(1 + np.exp(theta[i] - beta[j])))
+
     return -log_lklihood
 
 
@@ -53,28 +48,21 @@ def update_theta_beta(data, lr, theta, beta, discriminant):
     :param beta: Vector
     :return: tuple of vectors
     """
-    #####################################################################
-    # TODONE:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
 
     # Update theta
     d_theta = np.zeros_like(theta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid((theta[i] - beta[j]) * discriminant[j]) # Get probability of correct answer
-        d_theta[i] += is_correct - p # Get derivative w.r.t theta
-    theta = theta + lr * d_theta # Update weights with learning rate
+        p = sigmoid((theta[i] - beta[j]) * discriminant[j])  # Get probability of correct answer, now with discriminant.
+        d_theta[i] += is_correct - p  # Get derivative w.r.t theta
+    theta = theta + lr * d_theta  # Update weights with learning rate
 
     # Update beta
     d_beta = np.zeros_like(beta)
     for i, j, is_correct in zip(data["user_id"], data["question_id"], data["is_correct"]):
-        p = sigmoid((theta[i] - beta[j]) * discriminant[j]) # Get probability of correct answer
-        d_beta[j] += p - is_correct # Get derivative w.r.t theta
-    beta = beta + lr * d_beta # Update weights with learning rate
+        p = sigmoid((theta[i] - beta[j]) * discriminant[j])  # Get probability of correct answer
+        d_beta[j] += p - is_correct  # Get derivative w.r.t theta
+    beta = beta + lr * d_beta  # Update weights with learning rate
 
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
     return theta, beta
 
 
@@ -112,7 +100,6 @@ def irt(data, val_data, test_data, lr, iterations, discriminant, quiet=False):
             print("NLLK: {} \t Score: {}".format(neg_lld, score))
         theta, beta = update_theta_beta(data, lr, theta, beta, discriminant)
 
-    # TODONE: You may change the return values to achieve what you want.
     return theta, beta, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst
 
 
@@ -137,19 +124,14 @@ def evaluate(data, theta, beta):
 
 def main():
     train_data = load_train_csv("../data")
-    # You may optionally use the sparse matrix.
     sparse_matrix = load_train_sparse("../data")
     val_data = load_valid_csv("../data")
     test_data = load_public_test_csv("../data")
 
-    #####################################################################
-    # TODONE:                                                             #
-    # Tune learning rate and number of iterations. With the implemented #
-    # code, report the validation and test accuracy.                    #
-    #####################################################################
+    #  read question meta file to find no. of subjects related to each question
     with open("../data/question_meta.csv", "r") as f:
         csvreader = csv.reader(f)
-        next(csvreader) # Skip header row
+        next(csvreader)  # Skip header row
         discriminant = np.zeros(2000)
         for row in csvreader:
             question_id = int(row[0])
@@ -161,7 +143,7 @@ def main():
 
             discriminant[question_id] = len(subjects)
         discriminant = discriminant / np.max(discriminant)
-    
+
     # Grid search parameters
     lr_list = [0.05, 0.06, 0.7]
     iter_list = [90, 100, 110, 120]
@@ -169,24 +151,26 @@ def main():
     # Perform gridsearch
     gridsearch = [["Learning_rate", "Iterations", "val_score", "test_score", "val_lld"]]
     for lr in lr_list:
-        _, _, val_acc_lst, test_acc_lst, _, val_lld_lst = irt(train_data, val_data, test_data, lr, max(iter_list), discriminant, quiet=True)
+        _, _, val_acc_lst, test_acc_lst, _, val_lld_lst = irt(train_data, val_data, test_data, lr, max(iter_list),
+                                                              discriminant, quiet=True)
         for iter in iter_list:
-             # Retrieve vallidation and test scores for each Lr and iteration
-            val_score = val_acc_lst[iter-1]
-            test_score = test_acc_lst[iter-1]
-            val_lld = val_lld_lst[iter-1]
+            # Retrieve vallidation and test scores for each Lr and iteration
+            val_score = val_acc_lst[iter - 1]
+            test_score = test_acc_lst[iter - 1]
+            val_lld = val_lld_lst[iter - 1]
             gridsearch.append([lr, iter, val_score, test_score, val_lld])
-    
+
     # Write gridsearch results to csv file
     with open("../part_b/IRT_gridsearch_m.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerows(gridsearch)
-    
 
     quit()
     # Train model using best hyperparameters from gridsearch
     best_lr, best_iter = 0.02, 90
-    theta_final, beta_final, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst = irt(train_data, val_data, test_data, best_lr, best_iter, quiet=True)
+    theta_final, beta_final, val_acc_lst, test_acc_lst, train_lld_lst, val_lld_lst = irt(train_data, val_data,
+                                                                                         test_data, best_lr, best_iter,
+                                                                                         quiet=True)
 
     print(f"Final model hyperparameters:\nLearning Rate - {best_lr}\nIterations - {best_iter}")
     print("Final model validation accuracy: ", val_acc_lst[-1])
@@ -195,18 +179,10 @@ def main():
     # Write log-likelihood history to csv file
     with open("IRT_lld_m.csv", "w", newline="") as f:
         csvwriter = csv.writer(f)
-        csvwriter.writerow([i+1 for i in range(best_iter)])
+        csvwriter.writerow([i + 1 for i in range(best_iter)])
         for train_lld, val_lld in zip(train_lld_lst, val_lld_lst):
             csvwriter.writerow([train_lld, val_lld])
 
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
-
-    #####################################################################
-    # TODONE:                                                             #
-    # Implement part (d)                                                #
-    #####################################################################
     results = {}
     # Choose first 3 qns
     question_ids = train_data["question_id"][:3]
@@ -216,7 +192,7 @@ def main():
             if j == q_id:
                 # Initialize values as empty value
                 if theta_final[i] not in results.keys():
-                    results[theta_final[i]] = ["","",""]
+                    results[theta_final[i]] = ["", "", ""]
 
                 # Calculate probability and update value in dictionary
                 p = sigmoid(theta_final[i] - beta_final[j])
@@ -227,13 +203,6 @@ def main():
         csvwriter = csv.writer(f)
         for key in sorted(results.keys()):
             csvwriter.writerow([key] + results[key])
-
-
-
-
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
 
 
 if __name__ == "__main__":
